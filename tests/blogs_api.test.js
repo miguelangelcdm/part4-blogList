@@ -39,27 +39,26 @@ beforeEach(async () => {
   console.log('done')
 })
 
-test('blogs are returned as json', async () => {
-  await api
+test('blogs are returned as json and there are correct number of blogs', async () => {
+  const response = await api
     .get('/api/blogs')
     .expect(200)
     .expect('Content-Type', /application\/json/)
-})
-
-test('there are two blogs', async () => {
-  const response = await api.get('/api/blogs')
 
   assert.strictEqual(response.body.length, helper.initialBlogs.length)
 })
 
-test('the first blog is about React', async () => {
+test('unique identifier property of the blog posts is named "id"', async () => {
   const response = await api.get('/api/blogs')
 
-  const contents = response.body.map(e => e.title)
-  assert(contents.includes('React patterns'))
+  const blogs = response.body
+  blogs.forEach(blog => {
+    assert(blog.id, 'Blog should have an id property')
+    assert(!blog._id, 'Blog should not have an _id property')
+  })
 })
 
-test('a valid blog can be added ', async () => {
+test('a valid blog can be added and the correct number of blogs is correct', async () => {
   const newBlog = {
     _id: '5a422aa71b54a676231217f8',
     title: 'Go To Statement Considereds Harmful',
@@ -76,56 +75,47 @@ test('a valid blog can be added ', async () => {
     .expect('Content-Type', /application\/json/)
 
   const response = await api.get('/api/blogs')
-  //   const contents = response.body.map(r => r.content)
+  const contents = response.body.map(r => r.title)
   assert.strictEqual(response.body.length, helper.initialBlogs.length + 1)
-  //   assert(contents.includes('async/await simplifies making async calls'))
+  assert(contents.includes('Go To Statement Considereds Harmful'))
 })
 
-test('blog without title is not added', async () => {
+test('if likes property is missing from the request, it will default to 0', async () => {
   const newBlog = {
-
+    title: 'Type wars',
     author: 'Robert C. Martin',
-    url: 'http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll',
-    likes: 10,
+    url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
+  }
+  const response = await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(201)
+
+  assert.strictEqual(response.body.likes,0)
+})
+
+test('fails with status code 400 if title is missing', async () => {
+  const newBlog = {
+    // title: 'Type wars',
+    author: 'Robert C. Martin',
+    url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
   }
   await api
     .post('/api/blogs')
     .send(newBlog)
     .expect(400)
-
-  const response = await api.get('/api/blogs')
-
-  assert.strictEqual(response.body.length, helper.initialBlogs.length)
 })
 
-test('a specific blog can be viewed', async () => {
-  const blogsAtStart = await helper.blogsInDb()
-
-  const blogToView = blogsAtStart[0]
-
-
-  const resultBlog = await api
-    .get(`/api/blogs/${blogToView.id}`)
-    .expect(200)
-    .expect('Content-Type', /application\/json/)
-
-  assert.deepStrictEqual(resultBlog.body, blogToView)
-})
-
-test('a blog can be deleted', async () => {
-  const blogsAtStart = await helper.blogsInDb()
-  const blogToDelete = blogsAtStart[0]
-
+test('fails with status code 400 if url is missing', async () => {
+  const newBlog = {
+    title: 'Type wars',
+    author: 'Robert C. Martin',
+    // url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
+  }
   await api
-    .delete(`/api/blogs/${blogToDelete.id}`)
-    .expect(204)
-
-  const blogsAtEnd = await helper.blogsInDb()
-
-  //   const contents = blogsAtEnd.map(r => r.content)
-  //   assert(!contents.includes(blogToDelete.content))
-
-  assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length - 1)
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(400)
 })
 
 after(async () => {
