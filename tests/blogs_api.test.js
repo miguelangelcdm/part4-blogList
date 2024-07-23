@@ -28,10 +28,15 @@ const api = supertest(app)
 
 beforeEach(async () => {
   await Blog.deleteMany({})
-  let blogObject = new Blog(helper.initialBlogs[0])
-  await blogObject.save()
-  blogObject = new Blog(helper.initialBlogs[1])
-  await blogObject.save()
+  console.log('cleared')
+  //   const blogObjects = helper.initialBlogs.map(blog => new Blog(blog))
+  //   const promiseArray = blogObjects.map(blog => blog.save())
+  //   await Promise.all(promiseArray)
+  for (let blog of helper.initialBlogs) {
+    let blogObject = new Blog(blog)
+    await blogObject.save()
+  }
+  console.log('done')
 })
 
 test('blogs are returned as json', async () => {
@@ -78,7 +83,7 @@ test('a valid blog can be added ', async () => {
 
 test('blog without title is not added', async () => {
   const newBlog = {
-    // title: 'First class tests',
+
     author: 'Robert C. Martin',
     url: 'http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll',
     likes: 10,
