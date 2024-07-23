@@ -6,8 +6,8 @@ const requestLogger = (request, response, next) => {
     logger.info('Path:  ', request.path)
     logger.info('Body:  ', request.body)
     logger.info('---')
-    next()
   }
+  next()
 }
 
 const unknownEndpoint = (request, response) => {
@@ -22,7 +22,6 @@ const errorHandler = (error, request, response, next) => {
   } else if (error.name === 'ValidationError') {
     return response.status(400).json({ error: error.message })
   }
-
   next(error)
 }
 
