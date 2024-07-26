@@ -2,10 +2,9 @@ POST http://localhost:3001/api/blogs
 Content-Type: application/json
 
 {
-    "tile":"blog 1",
+    "title":"blog 2",
     "author":"Jhon Doe",
-    "url":"http://localhost:3001/api/blogs",
-    "likes":10
+    "url":"http://localhost:3001/api/blogs"
 }
 
 ###
