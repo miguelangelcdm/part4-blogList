@@ -8,6 +8,7 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const api = supertest(app)
+const jwt = require('jsonwebtoken')
 
 // const initialBlogs = [
 //   {
@@ -28,17 +29,52 @@ const api = supertest(app)
 //   },
 // ]
 
+let token = null
+
+// beforeEach(async () => {
+//   await Blog.deleteMany({})
+//   console.log('cleared blogs')
+//   for (let blog of helper.initialBlogs) {
+//     let blogObject = new Blog(blog)
+//     await blogObject.save()
+//   }
+//   console.log('blogs:done')
+
+//   await User.deleteMany({})
+//   console.log('cleared users')
+//   for (let user of helper.initialUsers){
+//     let userObject = new User(user)
+//     console.log('added user: ', userObject)
+//     await userObject.save()
+//   }
+//   console.log('users:done')
+// })
+
 beforeEach(async () => {
+  await User.deleteMany({})
+  console.log('cleared users')
+  const userPromises = helper.initialUsers.map(async (user) => {
+    let userObject = new User(user)
+    await userObject.save()
+    // Generate token for the user and store it
+    if (user.username === 'root') { // Adjust if necessary to select the appropriate user
+      const userForToken = {
+        username: userObject.username,
+        id: userObject._id,
+      }
+      token = jwt.sign(userForToken, process.env.SECRET, { expiresIn: '1h' })
+    }
+  })
+  await Promise.all(userPromises)
+  console.log('users:done')
+
   await Blog.deleteMany({})
-  console.log('cleared')
-  //   const blogObjects = helper.initialBlogs.map(blog => new Blog(blog))
-  //   const promiseArray = blogObjects.map(blog => blog.save())
-  //   await Promise.all(promiseArray)
+  console.log('cleared blogs')
   for (let blog of helper.initialBlogs) {
     let blogObject = new Blog(blog)
     await blogObject.save()
   }
-  console.log('done')
+  console.log('blogs:done')
 })
 
 test('blogs are returned as json and there are correct number of blogs', async () => {
@@ -69,6 +105,7 @@ test('a valid blog can be added and the number of blogs is correct', async () =>
 
   await api
     .post('/api/blogs')
+    .set('Authorization','Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJvb3QiLCJpZCI6IjY2YTMxYmJkMThlYTJkMDM5NjljZDc5ZCIsImlhdCI6MTcyMjAxOTUzMn0.3axhhqSmUcQve6GG_rDaj39Nao68a2FR8gTvgqWpDQE')
     .send(newBlog)
     .expect(201)
     .expect('Content-Type', /application\/json/)
@@ -87,6 +124,7 @@ test('if likes property is missing from the request, it will default to 0', asyn
   }
   const response = await api
     .post('/api/blogs')
+    .set('Authorization','Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJvb3QiLCJpZCI6IjY2YTMxYmJkMThlYTJkMDM5NjljZDc5ZCIsImlhdCI6MTcyMjAxOTUzMn0.3axhhqSmUcQve6GG_rDaj39Nao68a2FR8gTvgqWpDQE')
     .send(newBlog)
     .expect(201)
 
@@ -101,6 +139,7 @@ test('fails with status code 400 if title is missing', async () => {
   }
   await api
     .post('/api/blogs')
+    .set('Authorization','Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJvb3QiLCJpZCI6IjY2YTMxYmJkMThlYTJkMDM5NjljZDc5ZCIsImlhdCI6MTcyMjAxOTUzMn0.3axhhqSmUcQve6GG_rDaj39Nao68a2FR8gTvgqWpDQE')
     .send(newBlog)
     .expect(400)
 })
@@ -113,6 +152,7 @@ test('fails with status code 400 if url is missing', async () => {
   }
   await api
     .post('/api/blogs')
+    .set('Authorization','Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InJvb3QiLCJpZCI6IjY2YTMxYmJkMThlYTJkMDM5NjljZDc5ZCIsImlhdCI6MTcyMjAxOTUzMn0.3axhhqSmUcQve6GG_rDaj39Nao68a2FR8gTvgqWpDQE')
     .send(newBlog)
     .expect(400)
 })
@@ -120,9 +160,12 @@ test('fails with status code 400 if url is missing', async () => {
 test('a blog can be deleted', async () => {
   const blogsAtStart = await helper.blogsInDb()
   const blogToDelete = blogsAtStart[0]
-
+  // logger.info('blogs demo',blogsAtStart)
+  // logger.info('blogtoDelete',blogToDelete)
+  // logger.info('token: ',token)
   await api
     .delete(`/api/blogs/${blogToDelete.id}`)
+    .set('Authorization', `Bearer ${token}`)
     .expect(204)
 
   const blogsAtEnd = await helper.blogsInDb()
