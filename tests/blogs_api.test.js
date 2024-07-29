@@ -1,4 +1,4 @@
-const { test, after, beforeEach, describe } = require('node:test')
+const { test, after, beforeEach, describe, before } = require('node:test')
 const Blog = require('../models/blog')
 const helper = require('./test_helper')
 const bcrypt = require('bcrypt')
@@ -31,26 +31,8 @@ const jwt = require('jsonwebtoken')
 
 let token = null
 
-// beforeEach(async () => {
-//   await Blog.deleteMany({})
-//   console.log('cleared blogs')
-//   for (let blog of helper.initialBlogs) {
-//     let blogObject = new Blog(blog)
-//     await blogObject.save()
-//   }
-//   console.log('blogs:done')
 
-//   await User.deleteMany({})
-//   console.log('cleared users')
-//   for (let user of helper.initialUsers){
-//     let userObject = new User(user)
-//     console.log('added user: ', userObject)
-//     await userObject.save()
-//   }
-//   console.log('users:done')
-// })
-
-beforeEach(async () => {
+before(async () => {
   await User.deleteMany({})
   console.log('cleared users')
   const userPromises = helper.initialUsers.map(async (user) => {
@@ -67,13 +49,23 @@ beforeEach(async () => {
   })
   await Promise.all(userPromises)
   console.log('users:done')
+})
 
+beforeEach(async () => {
   await Blog.deleteMany({})
   console.log('cleared blogs')
-  for (let blog of helper.initialBlogs) {
+
+  const users = await User.find({})
+  const user = users[0]  // The first user in the list of users
+
+  const blogPromises = helper.initialBlogs.map(async (blog) => {
+    if (!blog.user) {
+      blog.user = user._id
+    }
     let blogObject = new Blog(blog)
     await blogObject.save()
-  }
+  })
+  await Promise.all(blogPromises)
   console.log('blogs:done')
 })
 
@@ -157,12 +149,9 @@ test('fails with status code 400 if url is missing', async () => {
     .expect(400)
 })
 
-test('a blog can be deleted', async () => {
+test.only('a blog can be deleted', async () => {
   const blogsAtStart = await helper.blogsInDb()
   const blogToDelete = blogsAtStart[0]
-  // logger.info('blogs demo',blogsAtStart)
-  // logger.info('blogtoDelete',blogToDelete)
-  // logger.info('token: ',token)
   await api
     .delete(`/api/blogs/${blogToDelete.id}`)
     .set('Authorization', `Bearer ${token}`)
@@ -188,6 +177,22 @@ test('updates the number of likes for a blog', async () => {
     .expect('Content-Type', /application\/json/)
 
   assert.strictEqual(response.body.likes, blogToUpdate.likes + 1)
+})
+
+test.only('adding a blog fails with status code 401 if a token is not provided', async () => {
+  const newBlog = {
+    title: 'Unauthorized Blog',
+    author: 'John Doe',
+    url: 'http://example.com/unauthorized',
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(401)
+
+  const blogsAtEnd = await helper.blogsInDb()
+  assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length)
 })
 
 describe('when there is initially one user in db', () => {
@@ -243,7 +248,6 @@ describe('when there is initially one user in db', () => {
     assert.strictEqual(usersAtEnd.length, usersAtStart.length)
   })
 })
-
 
 after(async () => {
   await mongoose.connection.close()

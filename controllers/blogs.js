@@ -2,7 +2,6 @@ const BlogsRouter=require('express').Router()
 const Blog = require('../models/blog')
 const User = require('../models/user')
 const middleware = require('../utils/middleware')
-const logger = require('../utils/logger')
 
 BlogsRouter.get('/', async (request, response) => {
   const blogs = await Blog.find({}).populate('user','username name id')
@@ -11,21 +10,18 @@ BlogsRouter.get('/', async (request, response) => {
 
 BlogsRouter.post('/', middleware.userExtractor, async (request, response) => {
   const body = request.body
-  logger.info('🚀 ~ BlogsRouter.post ~ body:', body)
   let user = request.user
-  logger.info('🚀 ~ BlogsRouter.post ~ user:', user)
 
   if (!user) {
     user = await User.findOne()
   }
-  logger.info('🚀 ~ BlogsRouter.post ~ user-afterfindOne():', user)
   const blog = new Blog({
     title: body.title,
     url: body.url,
     author: body.author,
     user: user.id
   })
-  logger.info('BLOG TO POST: ', blog)
+
   const savedBlog = await blog.save()
   if (user) {
     user.blogs = user.blogs.concat(savedBlog._id)
@@ -46,7 +42,6 @@ BlogsRouter.get('/:id', async (request, response) => {
 BlogsRouter.delete('/:id', middleware.userExtractor, async (request, response) => {
   const blog = await Blog.findById(request.params.id)
   const user = request.user
-  console.log('🚀 ~ BlogsRouter.delete ~ blog:', blog)
   console.log('🚀 ~ BlogsRouter.delete ~ user:', user._id.toString())
   console.log('🚀 ~ BlogsRouter.delete ~ blog.user:', blog.user.toString())
   if (!blog) {
